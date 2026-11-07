@@ -402,6 +402,28 @@ function ucgToJson(v) {
             }, false);
         }
 
+        // The intro, counts and coverage blocks are multiline. A fixed tall height left a blank band in a wide dock, so the
+        // height follows an estimate of the wrapped lines for the current width (wide characters counted double).
+        function wrappedHeight(text, widthPx) {
+            var s = String(text || "");
+            var i, w = 0, breaks = 0;
+            for (i = 0; i < s.length; i++) {
+                if (s.charAt(i) === "\n") { breaks++; }
+                w += (s.charCodeAt(i) > 255) ? 13 : 6.8;
+            }
+            var usable = Math.max(120, widthPx - 28);
+            var lines = Math.max(1, Math.ceil(w / usable) + breaks);
+            return lines * 15 + 6;
+        }
+        function fitText() {
+            var width = safe(function () { return win.size.width; }, 0);
+            if (!width || width < 60) { width = 320; }
+            intro.preferredSize.height = wrappedHeight(intro.text, width);
+            countsLine.preferredSize.height = wrappedHeight(countsLine.text, width);
+            // Keep the coverage block at least two lines tall: with a one-line height the text did not draw in After Effects.
+            coverageLine.preferredSize.height = Math.max(40, wrappedHeight(coverageLine.text, width));
+        }
+
         function paintChips() {
             var r, fp;
             if (last.kind === "report") {
@@ -442,6 +464,7 @@ function ucgToJson(v) {
                 countsLine.text = "";
                 coverageLine.text = "";
             }
+            fitText();
             win.layout.layout(true);
         }
 
@@ -463,7 +486,8 @@ function ucgToJson(v) {
             paintHeadline();
         };
 
-        win.onResizing = win.onResize = function () { this.layout.resize(); };
+        win.onResizing = win.onResize = function () { fitText(); this.layout.resize(); };
+        fitText();
         if (win instanceof Window) { win.center(); win.show(); } else { win.layout.layout(true); }
         return win;
     }
